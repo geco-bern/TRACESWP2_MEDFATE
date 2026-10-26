@@ -52,3 +52,4 @@ rsconnect/
 
 # intermediate results
 *.rds
+*.RData
