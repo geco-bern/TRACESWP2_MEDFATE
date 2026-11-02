@@ -8,7 +8,11 @@
 rm(list=ls())#remove all global environment
 
 library(readxl)
-library(dplyr)
+library(rsconnect, lib.loc = "/storage/software/epyc2.9/software/R-bundle-CRAN/2025.10-foss-2025a")
+#library(lifecycle, lib.loc = "/storage/software/epyc2.9/software/R/4.5.1-gfbf-2025a/lib64/R/library")
+library(rlang)
+library(dplyr, lib.loc = "/storage/software/epyc2.9/software/R-bundle-CRAN/2025.10-foss-2025a")
+
 library(ggplot2)
 library(terra)
 library(tibble)
@@ -20,9 +24,12 @@ library(medfate)
 library(medfateland)
 library(sass)
 
+getwd()
+setwd("/storage/homefs/md26i579/GitHub/geco-bern/TRACESWP2_MEDFATE")
+
 ### LOAD THE CREATED FOREST OBJECT ################################################################
 
-load("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R Scripts and data outputs/1. Model inputs/01. Model inputs_save forest object.RData")
+load("1. Model inputs/01. Model inputs_save forest object.RData")
 
 ###################################################################################################
 ### I. MODEL INPUTS & Test on one species and one site ############################################
@@ -31,10 +38,10 @@ load("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R
 ### 2. Create a soil object with the soil data ####################################################
 ### Import soil data from Eurofins: 0 - 20 cm #####################################################
 
-Soildata <- read_excel("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/1. TRACE field work/2. Measurements/5. Additional data/Soil data/soil_data_eurofins.xlsx")
-#View(Soildata)
+TRACES_soil_eurofins <- read_excel("0. Data gathering/2. Soil object/TRACES_soileurofins.xlsx")
+#View(TRACES_soil_eurofins)
 
-Soildata <- Soildata[, -c(4,6,8,9,11,12,14,15,17,18)]
+TRACES_soil_eurofins <- TRACES_soil_eurofins[, -c(4,6,8,9,11,12,14,15,17,18)]
 
 ### Import soil data from SoilGrid: 0 - 200 cm ####################################################
 
@@ -91,10 +98,10 @@ mon_soil$name <- "MONTSEC"
 pen_soil$name <- "PENTINA"
 
 # Combine them all into one sf object
-soil_all <- bind_rows(pas_soil, alo_soil, gar_soil, cin_soil, mon_soil, pen_soil)
+TRACES_soil_soilgrid <- bind_rows(pas_soil, alo_soil, gar_soil, cin_soil, mon_soil, pen_soil)
 
 # Check the combined data
-soil_all
+TRACES_soil_soilgrid
 
 # Select only the variable #vars = c("bdod", "cfvo") : bulk density and fragement that I missing from our personnal measurement
 
@@ -102,33 +109,31 @@ library(purrr)
 library(tidyr)
 library(tidyverse)
 
-soil_flat <- soil_all %>%
+TRACES_soil_soilgrid <- TRACES_soil_soilgrid %>%
   st_drop_geometry() %>%                     # remove geometry for a regular table
   mutate(soil = map2(soil, name, ~mutate(.x, name = .y))) %>%  # add site name inside each nested df
   dplyr::select(soil) %>%
   unnest(soil)                               # expand all nested data.frames
 
-soil_flat <- soil_flat %>%
+TRACES_soil_soilgrid <- TRACES_soil_soilgrid %>%
   dplyr::select(name, widths, bd, rfc)
 
-soil_flat <- soil_flat %>%
+TRACES_soil_soilgrid <- TRACES_soil_soilgrid %>%
   rename(Site_name = name)
 
-soil_flat <- soil_flat %>%
+TRACES_soil_soilgrid <- TRACES_soil_soilgrid %>%
   mutate(bd = bd) %>% #Change from  cg/cm3 (SoilGrids units) to g/cm3 (Medfate application)
   mutate(rfc = rfc) #change from cm³/dm³ (soilgrids units) in whole-soil volume (Medfate application)
 
-map_lgl(soil_all$soil, is.null)
-
 ### Merge Eurofins and soilGrid datas #############################################################
 
-Soildata <- merge(Soildata, soil_flat, by=c("Site_name"), all= TRUE, na="NA") #Does add all the layers (widths) for all parameters measured at eurofins: use same values for all layers
+TRACES_soil <- merge(TRACES_soil_eurofins, TRACES_soil_soilgrid, by=c("Site_name"), all= TRUE, na="NA") #Does add all the layers (widths) for all parameters measured at eurofins: use same values for all layers
 
 ### Rename the soil textural class to Medfate writing style #######################################
 
-str(Soildata)
+str(TRACES_soil)
 
-Soildata <- Soildata %>%
+TRACES_soil <- TRACES_soil %>%
   mutate(`Texture Type` = ifelse(`Texture Type` == "Sandy Loam", "sandy loam", rep(`Texture Type`, each = 1))) %>%
   mutate(`Texture Type` = ifelse(`Texture Type` == "Sandy Clay Loam", "sandy clay loam", rep(`Texture Type`, each = 1))) %>%
   mutate(`Texture Type` = ifelse(`Texture Type` == "Loam", "loam", rep(`Texture Type`, each = 1)))
@@ -137,25 +142,25 @@ Soildata <- Soildata %>%
 
 ### Save the merge data from both databases #######################################################
 
-# Define your working directory
-dir_out <- "C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/1. Data gathering/"
+#Check your working directory
+getwd()
 
-# SAVE OUTPUT FILES 
+#SAVE OUTPUT FILES 
 
-#write.csv(Soildata, file = file.path(dir_out, "Soildata_formedfate.csv"), row.names = FALSE)
+write.csv(TRACES_soil, file = "0. Data gathering/2. Soil object/TRACES_soil.csv")
 
 ### Conversion to soil and list ###################################################################
 
 SoilParams <- data.frame(
-  Code_site = Soildata$Code_site,
-  widths = Soildata$widths,   # layer thickness (example: upper/lower soil layers)
-  clay = Soildata$Clay,
-  sand = Soildata$Sand,
-  om = Soildata$`Organic Carbon (%)`,   # organic matter (can also use Oxidizable Organic Matter)
-  nitrogen = Soildata$`Kjeldahl Nitrogen (%)`,
-  usda = Soildata$`Texture Type`,
-  bd = Soildata$bd,       # bulk density (example, you can replace with measured)
-  rfc = Soildata$rfc)         # relative field capacity (example values)
+  Code_site = TRACES_soil$Code_site,
+  widths = TRACES_soil$widths,   # layer thickness (example: upper/lower soil layers)
+  clay = TRACES_soil$Clay,
+  sand = TRACES_soil$Sand,
+  om = TRACES_soil$`Organic Carbon (%)`,   # organic matter (can also use Oxidizable Organic Matter)
+  nitrogen = TRACES_soil$`Kjeldahl Nitrogen (%)`,
+  usda = TRACES_soil$`Texture Type`,
+  bd = TRACES_soil$bd,       # bulk density (example, you can replace with measured)
+  rfc = TRACES_soil$rfc)         # relative field capacity (example values)
 
 str(SoilParams)
 
@@ -167,7 +172,7 @@ class(examplesoil)
 ### Create a list of soil() objects, one per site #################################################
 
 SoilList <- lapply(unique(SoilParams$Code_site), function(site) {
-  site_data <- SoilParams %>% filter(Code_site == site)
+  site_data <- SoilParams %>% dplyr::filter(Code_site == site)
   site_soil <- soil(site_data)
   return(site_soil)
 })
@@ -208,12 +213,10 @@ lapply(soil_list, class)
 soil_list$PAS  # equivalent to SoilList$`1`
 soil_list$ALO  # equivalent to SoilList$`2`
 
-
 ### Save the soil object using the selected data ##################################################
 
-# Define your working directory
-dir_out <- "C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R Scripts and data outputs/1. Model inputs"
-setwd(dir_out)
+#Check your working directory
+getwd()
 
 # Save everything in the current environment
-save.image(file = "02. Model inputs_save soil object.RData")
+save.image(file = "1. Model inputs/02. Model inputs_save soil object.RData")

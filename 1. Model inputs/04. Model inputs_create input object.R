@@ -7,7 +7,13 @@
 
 rm(list=ls())#remove all global environment
 
+library(pkgbuild)
+library(remotes)
+library(S7)
+
 library(readxl)
+library(rsconnect, lib.loc = "/storage/software/epyc2.9/software/R-bundle-CRAN/2025.10-foss-2025a")
+library(rlang)
 library(dplyr)
 library(ggplot2)
 library(terra)
@@ -20,9 +26,12 @@ library(medfate)
 library(medfateland)
 library(sass)
 
-### LOAD THE CREATED FOREST OBJECT ################################################################
+getwd()
+setwd("/storage/homefs/md26i579/GitHub/geco-bern/TRACESWP2_MEDFATE")
 
-load("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R Scripts and data outputs/1. Model inputs/03. Model inputs_save default parameters.RData")
+### LOAD THE CREATED FOREST, SOIL OBJECT AND THE CONTROLS #########################################
+
+load("1. Model inputs/03. Model inputs_save default parameters.RData")
 
 ###################################################################################################
 ### I. MODEL INPUTS & Test on one species and one site ############################################
@@ -32,7 +41,7 @@ load("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R
 
 ### Combining forest, soil, control inputs and species parameters to an single input object #######
 
-SpParamsMED_f %>%  count(Name) %>%  filter(n > 1)
+SpParamsMED_f %>%  count(Name) %>%  dplyr::filter(n > 1)
 
 #SpParamsMED_f %>% filter(Code_site == 1, Name == "Arbutus unedo") %>%  nrow()
 
@@ -89,7 +98,7 @@ for (fname in forest_names) {
   # --- Filter species parameters (CRITICAL PART) ---
   SpParams_used <- SpParamsMED_f %>%
     mutate(Name = trimws(as.character(Name))) %>%
-    filter(Code_site == as.numeric(site), Name == species_name) %>%
+    dplyr::filter(Code_site == as.numeric(site), Name == species_name) %>%
     distinct(Name, .keep_all = TRUE)
   
   # Safety check (highly recommended)
@@ -108,13 +117,10 @@ for (fname in forest_names) {
   assign(var_name, spwbInput(get(fname), soil_used, SpParams_used, control))
 }
 
-
 ### Save the model input object using the selected data ###########################################
 
-# Define your working directory
-dir_out <- "C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R Scripts and data outputs/1. Model inputs"
-setwd(dir_out)
+getwd()
+setwd("/storage/homefs/md26i579/GitHub/geco-bern/TRACESWP2_MEDFATE")
 
 # Save everything in the current environment
-save.image(file = "04. Model inputs_save final model inputs object.RData")
-
+save.image(file = "1. Model inputs/04. Model inputs_save final model inputs object.RData")

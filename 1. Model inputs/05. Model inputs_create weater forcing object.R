@@ -7,7 +7,13 @@
 
 rm(list=ls())#remove all global environment
 
+library(pkgbuild)
+library(remotes)
+library(S7)
+
 library(readxl)
+library(rsconnect, lib.loc = "/storage/software/epyc2.9/software/R-bundle-CRAN/2025.10-foss-2025a")
+library(rlang)
 library(dplyr)
 library(ggplot2)
 library(terra)
@@ -19,9 +25,12 @@ library(medfate)
 library(medfateland)
 library(sass)
 
+getwd()
+setwd("/storage/homefs/md26i579/GitHub/geco-bern/TRACESWP2_MEDFATE")
+
 ### LOAD THE CREATED FINAL INPUTS OBJECT ###########################################################
 
-load("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R Scripts and data outputs/1. Model inputs/04. Model inputs_save final model inputs object.RData")
+load("1. Model inputs/04. Model inputs_save final model inputs object.RData")
 
 ###################################################################################################
 ### I. MODEL INPUTS & Test on one species and one site ############################################
@@ -39,10 +48,10 @@ load("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R
 #For the year 2023-2024
 #For the sub region of: 0.48, 2.26, 41.03, 42.29 (xmin, xmax, ymin, ymax)
 
-meteo <- rast("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/1. Data gathering/meteorological data ERA5/data2023.grib")
+meteo <- rast("0. Data gathering/3. Weather object/TRACES_weather2023ERA5.grib")
 meteo
 
-meteo2 <- rast("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/1. Data gathering/meteorological data ERA5/data2024.grib")
+meteo2 <- rast("0. Data gathering/3. Weather object/TRACES_weather2024ERA5.grib")
 meteo2
 
 ### Extract the meteorological data for our coordinates until March 2024 ##########################
@@ -122,7 +131,7 @@ wide_hourly <- wide_hourly %>%
          Year = year(DateTime), Month = month(DateTime), Day = day(DateTime), Date = date(DateTime))
 
 wide_hourly <- wide_hourly %>%
-  filter(Year != 2024)
+  dplyr::filter(Year != 2024)
 
 ### Extract the meteorological data for our coordinates for the whole 2024 ##########################
 
@@ -214,7 +223,7 @@ summary(wide_hourly)
 #The elevation is in m²/s²: gravitational energy per unit mass, it's related to height but not height yet
 #Values have to be divided by Gravity: 9.80665
 
-elevationERA5 <- rast("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/1. Data gathering/elevationERA5.grib")
+elevationERA5 <- rast("0. Data gathering/3. Weather object/TRACES_elevationERA5.grib")
 elevationERA5
 
 ### Extract the elevation data for our coordinates ################################################
@@ -284,7 +293,7 @@ str(wide_hourly)
 
 ### Import the surface pressure of each tile from ERA5 ############################################
 
-surfacepressureERA5 <- rast("C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/1. Data gathering/SurfacepressureERA5.grib")
+surfacepressureERA5 <- rast("0. Data gathering/3. Weather object/TRACES_surfacepressureERA5.grib")
 surfacepressureERA5
 
 ### Extract the surface pressure for our coordinates ##############################################
@@ -403,18 +412,12 @@ wide_daily
 
 ### Save the merge data from this database ########################################################
 
-# Define your working directory
-dir_out <- "C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/1. Data gathering/"
+getwd()
 
-# SAVE OUTPUT FILES 
-
-#write.csv(wide_daily, file = file.path(dir_out, "Meteodata.csv"), row.names = FALSE)
+#SAVE OUTPUT FILES 
+#write.csv(wide_daily, file = "0. Data gathering/3. Weather object/TRACES_meteo.csv", row.names = FALSE)
 
 ### Save the weather forcing using the selected data ##############################################
 
-# Define your working directory
-dir_out <- "C:/Users/Gency.WSL/Desktop/Margaux _ Post-Doc CREAF/22. MEDFATE model/2. R Scripts and data outputs/1. Model inputs"
-setwd(dir_out)
-
 # Save everything in the current environment
-save.image(file = "05. Model inputs_save weather forcing.RData")
+save.image(file = "1. Model inputs/05. Model inputs_save weather forcing.RData")
